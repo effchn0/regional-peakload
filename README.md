@@ -19,3 +19,7 @@ Configure a Cloudflare KV binding named `LOAD_KV`, set the Worker secret `WRITE_
 No actual EGAT URL/authentication adapter has yet been supplied. Until it is configured, Collector must fail clearly and never generate or claim to save fake data. Use JSON import for a read-only local preview.
 
 JSON shape: `{"rows":[{"date":"2026-11-01","region":"ภาคใต้","load":2150.5},{"date":"2026-11-02","region":"ภาคใต้","load":null}]}`. Missing values stay null and display – rather than zero.
+
+## Deployment
+
+GitHub Pages publishes automatically via `.github/workflows/pages.yml` when `main` is updated. Source: GitHub Actions.
