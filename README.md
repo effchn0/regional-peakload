@@ -5,6 +5,21 @@
 
 The GitHub Pages dashboard reads only **approved, published** monthly JSON files from relative paths `data/YYYY-MM.json`. It does not contact EGAT from GitHub Pages or a GitHub-hosted runner. There is **no automatic Mock fallback**.
 
+## Shared Collect from any EGAT-network computer (new)
+
+The dashboard no longer defaults to `127.0.0.1:8765`. For collection on **any EGAT-connected workstation without installing anything on workstations**, deploy the **shared collector Gateway** on a single *approved internal server* and expose it via an **authenticated, authorized HTTPS reverse proxy**.
+
+```sh
+npm install
+npm run gateway:server
+```
+
+The gateway code is in `gateway/server.mjs`. It listens on **127.0.0.1:8765 on that internal server only**; a separate organization-approved HTTPS proxy forwards `GET /health` and `POST /collect` to it. The proxy must restrict traffic to authorized EGAT-network/VPN users and enforce proper authentication, HTTPS certificates, and CORS for `https://effchn0.github.io`. A public or unauthenticated proxy would be unsafe. Origin checks are not authentication.
+
+Enter the actual authorized HTTPS URL in the Dashboard's “EGAT Collector Gateway” field. The website checks `/health` and requests `/collect` with the selected months, and immediately draws the returned, sanitized monthly documents. No Cookie, ASP.NET Session, or Hidden Field is returned to the browser or saved to GitHub. This cannot work from GitHub Pages alone without the approved HTTPS Gateway, because direct browser fetch to EGAT's HTTP ASP.NET endpoint is blocked by browser same-origin and mixed-content policies. **We have not configured or deployed the organization's proxy or internal server.**
+
+The old local `collector/server.mjs` and CLI remain for backwards compatibility, but are no longer the default for the dashboard.
+
 ## Setup on an authorized computer inside EGAT
 
 Install Node.js 20 or later. Clone this repository, then run:
@@ -47,9 +62,9 @@ Start Local Collector on the *same authorized EGAT-network computer*, from the c
 npm run collector:server
 ```
 
-It listens on `http://127.0.0.1:8765` only. The website's **Collect Data** button sends the selected Gregorian year and month range to that localhost Collector. The Collector writes JSON **locally only**. It never commits or pushes; after checking/publication approval, run the manual git commands above.
+It listens on `http://127.0.0.1:8765` only. The legacy localhost Collector accepts selected Gregorian year/months; the new Dashboard uses the configured HTTPS Gateway instead. The Collector writes JSON **locally only**. It never commits or pushes; after checking/publication approval, run the manual git commands above.
 
-On page opening, when the selected current month's published data is more than one day stale or missing, the page tries the local Collector if reachable. When opened outside EGAT, or without a running Collector, it shows a connection error and continues showing previously published data. A fetch failure cannot by itself distinguish “outside EGAT” from a stopped Collector or browser local-network restrictions.
+On page opening, when the selected current month's published data is more than one day stale or missing, the page tries the configured HTTPS Gateway if reachable. When opened outside EGAT, or without a running Collector, it shows a connection error and continues showing previously published data. A fetch failure cannot by itself distinguish “outside EGAT” from a stopped Collector or browser local-network restrictions.
 
 ### JSON schema
 
