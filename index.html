@@ -17,12 +17,12 @@
 <section class="card"><div class="sectionhead"><h2>วันที่เกิด High Alarm</h2><span class="muted">แสดงเฉพาะค่าที่สูงกว่าเกณฑ์ High Alarm</span></div><div class="tablewrap"><table><thead><tr><th>วันที่</th><th>ภาค</th><th style="text-align:right">Load (MW)</th><th style="text-align:right">สูงกว่าเกณฑ์ (MW)</th></tr></thead><tbody id="alarmRows"><tr><td colspan="4">–</td></tr></tbody></table></div></section>
 <section class="card"><div class="sectionhead"><h2>Collect ข้อมูลจาก EGAT</h2><span class="muted">Manual / Auto Collect</span></div>
 <div class="row"><div class="field"><label>ตั้งแต่เดือน</label><select id="fromMonth"></select></div><div class="field"><label>ถึงเดือน</label><select id="toMonth"></select></div><div class="field"><label>ปี (ค.ศ.)</label><input type="number" min="2000" max="2100" id="collectYear"></div><button id="collectBtn" class="primary">Collect Data</button><button id="refreshBtn" class="ghost">โหลดข้อมูลที่เผยแพร่</button></div>
-<div id="collectState" class="status">Collector จะทำงานได้เมื่อเครื่องเข้าถึงบริการภายใน EGAT ที่ตั้งค่าไว้</div>
+<div id="collectState" class="status">อ่านข้อมูลจาก API เดิมได้หากอนุญาต CORS; การเชื่อมต่อ EGAT สดต้องใช้ Gateway ภายในที่ได้รับอนุญาต</div>
 <div class="two"><div><div class="muted">Last Collect (ไฟล์ที่เผยแพร่)</div><strong id="lastCollect">–</strong></div><div><div class="muted">ข้อมูลล่าสุดที่เผยแพร่</div><strong id="serverLast">–</strong></div></div>
 <p class="note">กด Collect จากเครื่องที่เข้าถึง HTTPS Collector Gateway ภายใน EGAT ได้ เพื่อแสดงกราฟทันที ไม่ต้องติดตั้ง Collector ทุกเครื่อง หากยังไม่มี Gateway ต้องให้ระบบเครือข่ายตั้งค่าบริการนี้ก่อน; ข้อมูลเผยแพร่ภายนอกต้องผ่านการอนุญาต</p>
 <details style="margin-top:15px"><summary style="cursor:pointer">ตั้งค่าการเชื่อมต่อ / นำเข้า JSON</summary>
-<div class="row" style="margin-top:12px"><div class="field" style="min-width:280px"><label>EGAT Collector Gateway (HTTPS ที่ได้รับอนุญาต)</label><input id="collectorUrl" type="url" placeholder="https://collector.internal.example"></div><button id="saveSettings" class="ghost">บันทึกค่าในเครื่อง</button></div>
-<p class="note">เครื่องใดในเครือข่าย EGAT ที่เข้าถึง HTTPS Collector Gateway ที่ได้รับอนุญาต จะ Collect ได้โดยไม่ต้องติดตั้งโปรแกรมรายเครื่อง • GitHub Pages ไม่สามารถติดต่อ EGAT HTTP ได้โดยตรง • ไม่ส่ง Cookie, Session หรือ Hidden Fields ขึ้น GitHub</p>
+<div class="row" style="margin-top:12px"><div class="field" style="min-width:280px"><label>EGAT Collector Gateway (HTTPS ที่ได้รับอนุญาต)</label><input id="collectorUrl" type="url" placeholder="https://collector.internal.example"></div><button id="saveSettings" class="ghost">บันทึกค่าในเครื่อง</button><button id="loadOldBtn" class="ghost">อ่านข้อมูลจาก Site เดิม</button></div>
+<p class="note">API เดิมอาจส่ง Snapshot แม้ตอบ HTTP 200 ระบบจะแสดงสถานะจาก Response ตามจริง • การ Fetch ข้ามโดเมนต้องได้รับอนุญาต CORS • GitHub Pages ไม่สามารถติดต่อ EGAT HTTP ได้โดยตรง</p>
 <div class="row" style="margin-top:10px"><input type="file" id="jsonFile" accept=".json,application/json"><button id="importBtn" class="ghost">ตรวจสอบ JSON</button><button id="downloadBtn" class="ghost">ส่งออก JSON ที่แสดง</button></div><p class="note">การนำเข้า JSON เป็น Preview เท่านั้น ไม่เขียนทับไฟล์เผยแพร่หรือสร้างข้อมูล Mock</p>
 </details></section>
 <section class="card"><div class="sectionhead"><h2>ตาราง Peak รายวันและเวลา</h2><span class="muted">Demand / Peak time ตามที่รายงานใน EGAT</span></div><div class="tablewrap"><table><thead><tr><th>วันที่</th><th>เวลา Peak</th><th style="text-align:right">Demand (MW)</th><th style="text-align:right">Generation (MW)</th><th style="text-align:right">Export (MW)</th></tr></thead><tbody id="peakRows"><tr><td colspan="5">–</td></tr></tbody></table></div><p class="note">Demand ของ “รวม” ใช้ค่ารวมที่ต้นทางรายงาน ไม่ได้บวกค่า Peak ของแต่ละภาค • หน่วย MW กำหนดโดยโครงการ</p></section>
@@ -70,6 +70,36 @@ async function loadPublished(){
   const doc=await response.json();rows=validate(doc,y,m);current=doc;preview=false;render();
   msg("state","ข้อมูลที่เก็บไว้ ไม่ใช่ Live • เก็บเมื่อ "+new Date(doc.collectedAt).toLocaleString("th-TH")+" • "+rows.length+" วัน","ok");
  }catch(e){rows=[];current=null;render();msg("state","ข้อมูล JSON ไม่ผ่านการตรวจสอบ: "+e.message,"err")}
+}
+const LEGACY_API="https://effchn-peakload.chalermphol-ko132.chatgpt.site";
+function adoptDocument(doc,kind){
+ const y=Number(doc.year),m=Number(doc.month);
+ const data=validate(doc,y,m);
+ ++requestSeq;current=doc;rows=data;preview=false;
+ $("viewYear").value=String(y);$("viewMonth").value=String(m);
+ render();
+ const when=doc.collectedAt?new Date(doc.collectedAt).toLocaleString("th-TH"):"ไม่ระบุ";
+ const unreachable=doc.connectionStatus==="source_unreachable";
+ const snapshot=doc.transport==="internal-snapshot"||unreachable;
+ const tag=snapshot?"Snapshot เดิม • ไม่ใช่ Live":"ข้อมูลจาก "+kind+" • ไม่ใช่ Live";
+ $("sourceBadge").textContent=tag;
+ msg("state",tag+" • ข้อมูล "+data.length+" วัน • เก็บเมื่อ "+when+(unreachable?" • Server ต้นทาง EGAT ติดต่อไม่ได้":"")+" • HTTP 200 ไม่ได้ยืนยันว่า Collect สดสำเร็จ",snapshot?"warn":"ok");
+}
+async function loadLegacy({year=Number($("viewYear").value),month=Number($("viewMonth").value),silent=false}={}){
+ if(!Number.isInteger(year)||!Number.isInteger(month)||month<1||month>12)return false;
+ try{
+  const url=LEGACY_API+"/monthly?year="+year+"&month="+pad(month);
+  const res=await fetch(url,{signal:AbortSignal.timeout(12000),cache:"no-store",credentials:"omit"});
+  if(!res.ok)throw Error("HTTP "+res.status);
+  const doc=await res.json();
+  if(Number(doc.year)!==year||Number(doc.month)!==month||doc.isMock!==false)throw Error("API ส่งเดือน/ปี หรือประเภทข้อมูลไม่ตรง");
+  adoptDocument(doc,"Site เดิม");
+  msg("collectState",doc.connectionStatus==="source_unreachable"?"โหลด Snapshot เดิมแล้ว แต่การเชื่อมต่อ EGAT ของ Server เดิมล้มเหลว":"อ่านข้อมูลจาก Site เดิมสำเร็จ • ตรวจ collectedAt/connectionStatus เพื่อยืนยันความสด","warn");
+  return true;
+ }catch(e){
+  if(!silent)msg("collectState","อ่าน API เดิมจาก GitHub Pages ไม่สำเร็จ: "+e.message+" • อาจเป็น CORS จากคนละโดเมน ไม่ใช่สาเหตุของเครือข่าย EGAT โดยตรง • สามารถบันทึก JSON จาก Site เดิมแล้วนำเข้าเป็น Preview ได้","err");
+  return false;
+ }
 }
 function latestActualDate(){return rows.slice().reverse().find(r=>regions.some(([,key])=>r[key]?.demand!==null))?.date||null}
 function selection(){const key=$("region").value;return rows.map(r=>({date:r.date,region:key,...r[key]}))}
@@ -150,10 +180,11 @@ async function init(){
  $("region").onchange=render;$("alarmThreshold").oninput=render;$("axisMin").oninput=render;
  $("axisReset").onclick=()=>{$("axisMin").value="";render()};
  $("collectBtn").onclick=()=>collect(false);$("refreshBtn").onclick=loadPublished;
+ $("loadOldBtn").onclick=()=>loadLegacy();
  $("saveSettings").onclick=()=>{localStorage.setItem("regional.collector",$("collectorUrl").value.trim());msg("collectState","บันทึก HTTPS Gateway URL บน Browser นี้แล้ว","ok")};
  $("importBtn").onclick=async()=>{const file=$("jsonFile").files[0];if(!file)return msg("collectState","กรุณาเลือก JSON","warn");try{const doc=JSON.parse(await file.text());rows=validate(doc,Number(doc.year),Number(doc.month));$("viewYear").value=doc.year;$("viewMonth").value=doc.month;current=doc;preview=true;render();msg("collectState","ตรวจสอบ JSON สำเร็จ (Preview เท่านั้น ไม่ได้เผยแพร่)","ok")}catch(e){msg("collectState","JSON ไม่ถูกต้อง: "+e.message,"err")}};
  $("downloadBtn").onclick=exportView;
- await loadPublished();await autoCheck();
+ await loadPublished();if(!current)await loadLegacy({silent:true});await autoCheck();
 }
 init();
 </script></body></html>
