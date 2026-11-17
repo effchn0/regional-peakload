@@ -51,5 +51,6 @@ for(const file of assets){
  console.log("prepared",file,typeof data==="string"?data.length:data.byteLength);
 }
 await writeFile(resolve(OUT,".nojekyll"),"");
-await writeFile(resolve(OUT,"version.js"),'document.getElementById("codeStamp").textContent="lost code : "+new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Bangkok",dateStyle:"short",timeStyle:"medium"}).format(new Date('+JSON.stringify(new Date().toISOString())+'));');
+const stamp=new Date().toISOString();
+await writeFile(resolve(OUT,"version.js"),'document.getElementById("codeStamp").textContent="lost code : "+new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Bangkok",dateStyle:"short",timeStyle:"medium"}).format(new Date('+JSON.stringify(stamp)+'));');
 console.log("Published frontend matches original Site layout. No EGAT JSON republished.");
