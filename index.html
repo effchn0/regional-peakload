@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Regional Peak Load • High Alarm</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+:root{font-family:Inter,"Noto Sans Thai",system-ui,sans-serif;color:#182940;background:#f3f6fb}*{box-sizing:border-box}body{margin:0}header{background:#132d4c;color:white;padding:19px max(24px,calc((100% - 1300px)/2));display:flex;justify-content:space-between;gap:16px;align-items:center}header h1{font-size:22px;margin:0}header small{color:#bbd0e5}.wrap{max-width:1300px;margin:25px auto;padding:0 20px}.card{background:#fff;border:1px solid #dce5ef;border-radius:15px;padding:20px;box-shadow:0 3px 18px #1a3f6810;margin-bottom:18px}.row{display:flex;gap:12px;flex-wrap:wrap;align-items:end}.field{display:flex;flex-direction:column;gap:5px;min-width:130px;flex:1}.field label{font-size:12px;color:#50647d;font-weight:650}select,input,button{font:inherit;border-radius:9px;padding:10px 12px;border:1px solid #cdd9e7;background:white;color:#1d334b}button{cursor:pointer;font-weight:650}button.primary{background:#1467b7;border-color:#1467b7;color:white}button:disabled{opacity:.5;cursor:not-allowed}.ghost{background:#f3f7fc}.muted{font-size:12px;color:#6d7d92}.status{border-radius:10px;padding:10px 13px;background:#f0f5fb;color:#25415f;margin:13px 0;font-size:13px}.status.warn{background:#fff5e6;color:#895100}.status.err{background:#fff0ed;color:#a12e22}.status.ok{background:#eaf8f0;color:#16643a}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.stat{padding:16px;background:#f8fafd;border-radius:12px;border:1px solid #e5ecf4}.stat span{display:block;color:#65768e;font-size:12px}.stat strong{display:block;font-size:21px;margin-top:6px}.chartwrap{height:390px;position:relative}.sectionhead{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:14px}.sectionhead h2{font-size:17px;margin:0}.axis{display:flex;align-items:center;gap:8px;justify-content:end;margin-top:10px}.axis input{width:115px;padding:6px 9px}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:10px;border-bottom:1px solid #ebeff5;text-align:left}th{background:#f6f9fc;color:#49617a}td.num{text-align:right;font-variant-numeric:tabular-nums}.tablewrap{overflow-x:auto}.note{font-size:12px;color:#596b81;margin:9px 0 0}.tabs{display:flex;gap:7px;flex-wrap:wrap}.tabs button.active{background:#dcecff;border-color:#94bce8;color:#145b9d}.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}.tiny{font-size:12px;color:#7a8a9b}footer{text-align:center;color:#738298;font-size:12px;padding:24px}input[type=number]{max-width:130px}@media(max-width:750px){.stats,.two{grid-template-columns:1fr 1fr}.chartwrap{height:300px}header{padding:18px}.stat strong{font-size:17px}}@media(max-width:480px){.stats,.two{grid-template-columns:1fr}.wrap{padding:0 12px}}
+</style></head>
+<body><header><div><h1>Regional Peak Load <span style="opacity:.6">•</span> High Alarm</h1><small>ระบบติดตามโหลดไฟฟ้าสูงสุดรายภาค</small></div><span class="tiny" style="color:#c0d6e9">EGAT • Regional Monitor</span></header>
+<main class="wrap">
+<section class="card"><div class="sectionhead"><h2>ภาพรวมโหลดรายภาค</h2><span id="sourceBadge" class="muted">ยังไม่มีข้อมูล</span></div>
+<div class="row"><div class="field"><label for="region">ภาค</label><select id="region"></select></div><div class="field"><label for="viewMonth">เดือน</label><select id="viewMonth"></select></div><div class="field"><label for="viewYear">ปี (ค.ศ.)</label><input id="viewYear" type="number" min="2000" max="2100"></div><div class="field"><label for="alarmThreshold">High Alarm (MW)</label><input id="alarmThreshold" type="number" min="0" step="1" placeholder="กำหนดเกณฑ์"></div><button class="primary" id="showBtn">แสดงข้อมูล</button></div>
+<div id="state" class="status">กำลังตรวจสอบข้อมูลที่บันทึกไว้…</div>
+<div class="stats"><div class="stat"><span>Peak Load</span><strong id="peak">–</strong></div><div class="stat"><span>Average Load</span><strong id="avg">–</strong></div><div class="stat"><span>High Alarm Days</span><strong id="alarmCount">–</strong></div><div class="stat"><span>Last Data</span><strong id="lastData">–</strong></div></div>
+</section>
+<section class="card"><div class="sectionhead"><h2>กราฟโหลดรายวัน (MW)</h2><span id="chartRange" class="muted"></span></div><div class="chartwrap"><canvas id="loadChart"></canvas></div><div class="axis"><label class="muted" for="axisMin">เริ่มแกน Y ที่ (MW)</label><input id="axisMin" type="number" step="50" placeholder="อัตโนมัติ"><button class="ghost" id="axisReset">รีเซ็ต</button></div></section>
+<section class="card"><div class="sectionhead"><h2>วันที่เกิด High Alarm</h2><span class="muted">แสดงเฉพาะค่าที่สูงกว่าเกณฑ์ High Alarm</span></div><div class="tablewrap"><table><thead><tr><th>วันที่</th><th>ภาค</th><th style="text-align:right">Load (MW)</th><th style="text-align:right">สูงกว่าเกณฑ์ (MW)</th></tr></thead><tbody id="alarmRows"><tr><td colspan="4">–</td></tr></tbody></table></div></section>
+<section class="card"><div class="sectionhead"><h2>Collect ข้อมูลจาก EGAT</h2><span class="muted">Manual / Auto Collect</span></div>
+<div class="row"><div class="field"><label>ตั้งแต่เดือน</label><select id="fromMonth"></select></div><div class="field"><label>ถึงเดือน</label><select id="toMonth"></select></div><div class="field"><label>ปี (ค.ศ.)</label><input type="number" min="2000" max="2100" id="collectYear"></div><button id="collectBtn" class="primary">Collect Data</button><button id="refreshBtn" class="ghost">โหลดข้อมูลจาก Server</button></div>
+<div id="collectState" class="status">Collector จะทำงานได้เมื่อเครื่องเข้าถึงบริการภายใน EGAT ที่ตั้งค่าไว้</div>
+<div class="two"><div><div class="muted">Last Collect</div><strong id="lastCollect">–</strong></div><div><div class="muted">ข้อมูลล่าสุดบน Server</div><strong id="serverLast">–</strong></div></div>
+<p class="note">เปิดเว็บแล้วระบบจะ Auto Collect เมื่อวันที่ล่าสุดของข้อมูลเก่ากว่าวันนี้มากกว่า 1 วัน โดยพยายามผ่าน Collector ภายในเครื่อง ไม่บันทึก Session/Hidden Fields ในเว็บไซต์หรือคลังข้อมูลสาธารณะ</p>
+<details style="margin-top:15px"><summary style="cursor:pointer">ตั้งค่าการเชื่อมต่อ / นำเข้า JSON</summary>
+<div class="row" style="margin-top:12px"><div class="field" style="min-width:230px"><label>Server API URL (HTTPS)</label><input id="apiUrl" type="url" placeholder="https://your-worker.workers.dev"></div><div class="field" style="min-width:230px"><label>Local Collector URL</label><input id="collectorUrl" type="url" placeholder="http://127.0.0.1:8765"></div><button id="saveSettings" class="ghost">บันทึกค่าในเครื่อง</button></div>
+<p class="note">GitHub Pages เป็น Static Hosting จึงต้องมี Backend สำหรับเก็บข้อมูลถาวร การตั้งค่า URL นี้เก็บเฉพาะใน Browser ของคุณ</p>
+<div class="row" style="margin-top:10px"><input type="file" id="jsonFile" accept=".json,application/json"><button id="importBtn" class="ghost">ตรวจสอบ JSON</button><button id="downloadBtn" class="ghost">ส่งออก JSON ที่แสดง</button></div><p class="note">การนำเข้า JSON ใช้ตรวจสอบข้อมูลใน Browser เท่านั้น ไม่ใช่การบันทึกขึ้น Server</p>
+</details></section>
+</main><footer>Regional Peak Load Monitor • ค่าว่างแสดง “–” ไม่แทนด้วยศูนย์ • Demo/Mock ต้องระบุชัดเจน</footer>
+<script>
+"use strict";
+const months=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+const regions=["ภาคเหนือ","ภาคตะวันออกเฉียงเหนือ","ภาคกลาง","ภาคตะวันออก","ภาคตะวันตก","ภาคใต้","รวมทุกภาค"];
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,"0"); const isoLocal=d=>[d.getFullYear(),pad(d.getMonth()+1),pad(d.getDate())].join("-");
+const now=new Date(); let rows=[],chart=null,source="server";
+const fmt=n=>n==null||!Number.isFinite(Number(n))?"–":new Intl.NumberFormat("th-TH",{maximumFractionDigits:2}).format(Number(n));
+const dateTH=s=>s?new Date(s+"T12:00:00").toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"numeric"}):"–";
+const msg=(id,s,type="")=>{$(id).textContent=s;$(id).className="status "+type};
+function options(id,values,selected){$(id).replaceChildren(...values.map((t,i)=>{let o=document.createElement("option");o.value=String(i+1);o.textContent=t;if(i+1===selected)o.selected=true;return o}))}
+function selectRegions(){regions.forEach((x,i)=>{let o=new Option(x,x);$("region").add(o)})}
+function cfg(){return {api:localStorage.getItem("regional.api")||"",collector:localStorage.getItem("regional.collector")||"http://127.0.0.1:8765"}}
+const timeout=(ms=7000)=>AbortSignal.timeout(ms);
+function normalize(data){let a=Array.isArray(data)?data:data?.rows;if(!Array.isArray(a))throw Error("JSON ต้องมี rows เป็น Array");
+return a.map(r=>({date:String(r.date||r.Date||"").slice(0,10),region:String(r.region||r.Region||""),load:(r.load===null||r.load===undefined||r.load===""?null:Number(r.load))})).filter(r=>/^\d{4}-\d{2}-\d{2}$/.test(r.date)&&regions.includes(r.region)&&r.region!=="รวมทุกภาค"&&(r.load===null||Number.isFinite(r.load)));}
+function latest(){return rows.map(r=>r.date).sort().at(-1)||null}
+function monthRows(){let y=Number($("viewYear").value),m=Number($("viewMonth").value),reg=$("region").value;
+let filtered=rows.filter(r=>Number(r.date.slice(0,4))===y&&Number(r.date.slice(5,7))===m);
+if(reg==="รวมทุกภาค"){let map=new Map();for(let r of filtered){let a=map.get(r.date)||[];a.push(r.load);map.set(r.date,a)}return [...map].map(([date,a])=>({date,region:reg,load:a.length===6&&a.every(v=>v!==null)?a.reduce((x,y)=>x+y,0):null})).sort((a,b)=>a.date.localeCompare(b.date))}
+return filtered.filter(r=>r.region===reg).sort((a,b)=>a.date.localeCompare(b.date))}
+function render(){let a=monthRows(),v=a.filter(r=>r.load!==null),threshold=$("alarmThreshold").value===""?null:Number($("alarmThreshold").value),alarms=threshold===null?[]:v.filter(r=>r.load>threshold);
+$("peak").textContent=v.length?fmt(Math.max(...v.map(r=>r.load)))+" MW":"–";$("avg").textContent=v.length?fmt(v.reduce((s,r)=>s+r.load,0)/v.length)+" MW":"–";$("alarmCount").textContent=threshold===null?"กำหนดเกณฑ์ก่อน":String(alarms.length);
+$("lastData").textContent=dateTH(latest());$("serverLast").textContent=dateTH(latest());
+$("sourceBadge").textContent=source==="server"?"Server Data":source==="import"?"JSON Preview (ยังไม่บันทึก)":"No Data";
+$("chartRange").textContent=months[Number($("viewMonth").value)-1]+" "+$("viewYear").value;
+let tbody=$("alarmRows");tbody.replaceChildren();if(!alarms.length){let tr=tbody.insertRow();let td=tr.insertCell();td.colSpan=4;td.textContent=threshold===null?"กรุณากำหนดเกณฑ์ High Alarm":"ไม่มีวันที่เกินเกณฑ์สำหรับเดือนนี้"}
+for(let r of alarms){let tr=tbody.insertRow();for(let t of [dateTH(r.date),r.region,fmt(r.load),fmt(r.load-threshold)]){let td=tr.insertCell();td.textContent=t}tr.children[2].className="num";tr.children[3].className="num"}
+let labels=a.map(r=>Number(r.date.slice(8)));let data=a.map(r=>r.load);let min=$("axisMin").value===""?undefined:Number($("axisMin").value);
+if(chart)chart.destroy();
+if(typeof Chart==="undefined"){msg("state","โหลดไลบรารีกราฟไม่สำเร็จ โปรดตรวจสอบการเชื่อมต่ออินเทอร์เน็ต","warn");return}
+chart=new Chart($("loadChart"),{type:"bar",data:{labels,datasets:[{label:"Load (MW)",data,backgroundColor:data.map(v=>threshold!==null&&v!==null&&v>threshold?"#ef836a":"#428bd0"),borderRadius:5,maxBarThickness:36}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:items=>"วันที่ "+items[0].label+" "+months[Number($("viewMonth").value)-1]+" "+$("viewYear").value,label:item=>"Load: "+fmt(item.raw)+" MW"}}},scales:{y:{min,title:{display:true,text:"MW"},ticks:{callback:fmt}},x:{title:{display:true,text:"วันที่"}}}}})}
+async function loadServer(){const {api}=cfg();if(!api){rows=[];source="server";msg("state","ยังไม่ได้ตั้งค่า Server API URL — ไม่มีข้อมูลจริงให้แสดง กรุณาตั้งค่า Backend หรือทดสอบนำเข้า JSON","warn");render();return false}
+try{let response=await fetch(api.replace(/\/$/,"")+"/api/data",{signal:timeout(12000)});if(!response.ok)throw Error("HTTP "+response.status);rows=normalize(await response.json());source="server";msg("state","โหลดข้อมูลจาก Server สำเร็จ ("+rows.length+" รายการ)","ok");render();return true}catch(e){msg("state","ไม่สามารถโหลดข้อมูลจาก Server: "+e.message,"err");render();return false}}
+async function localCollect(auto=false){let c=cfg().collector.replace(/\/$/,"");
+const y=Number($("collectYear").value),a=Number($("fromMonth").value),b=Number($("toMonth").value);
+if(a>b){msg("collectState","เดือนเริ่มต้นต้องไม่เกินเดือนสิ้นสุด","warn");return}
+let button=$("collectBtn");button.disabled=true;msg("collectState",(auto?"Auto Collect":"Manual Collect")+" — กำลังตรวจสอบ Collector ภายใน EGAT…");
+try{let health=await fetch(c+"/health",{signal:timeout(4000)});if(!health.ok)throw Error("Collector ไม่พร้อมใช้งาน");
+let res=await fetch(c+"/collect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({year:y,fromMonth:a,toMonth:b}),signal:timeout(120000)});
+let payload=await res.json().catch(()=>({}));if(!res.ok)throw Error(payload.error||"HTTP "+res.status);
+$("lastCollect").textContent=new Date().toLocaleString("th-TH");msg("collectState","Collect สำเร็จ: "+(payload.count??"–")+" รายการ — โหลดข้อมูล Server ใหม่","ok");await loadServer()
+}catch(e){msg("collectState","ไม่สามารถ Collect จากภายนอกเครือข่าย EGAT หรือ Local Collector ไม่พร้อมใช้งาน ("+e.message+"). กรุณาเชื่อมต่อเครือข่าย EGAT/VPN ที่ได้รับอนุญาต และเปิด Collector ภายในเครื่อง","err")}
+finally{button.disabled=false}}
+async function autoCollect(){let last=latest(),today=isoLocal(new Date());if(last&&Math.round((Date.parse(today)-Date.parse(last))/86400000)<=1)return;let d=last?new Date(last+"T12:00:00"):new Date();if(!last)d.setMonth(d.getMonth()-1);$("collectYear").value=now.getFullYear();$("fromMonth").value=String(d.getFullYear()===now.getFullYear()?d.getMonth()+1:1);$("toMonth").value=String(now.getMonth()+1);
+await localCollect(true)}
+function exportView(){let file=new Blob([JSON.stringify({rows:monthRows()},null,2)],{type:"application/json"});let url=URL.createObjectURL(file);let a=document.createElement("a");a.href=url;a.download="regional-load-"+$("viewYear").value+"-"+pad($("viewMonth").value)+".json";a.click();URL.revokeObjectURL(url)}
+async function init(){for(let id of ["viewMonth","fromMonth","toMonth"])options(id,months,now.getMonth()+1);selectRegions();$("region").value="ภาคใต้";$("viewYear").value=now.getFullYear();$("collectYear").value=now.getFullYear();$("fromMonth").value="1";$("apiUrl").value=cfg().api;$("collectorUrl").value=cfg().collector;
+$("showBtn").onclick=render;$("axisMin").oninput=render;$("axisReset").onclick=()=>{$("axisMin").value="";render()};$("alarmThreshold").oninput=render;
+$("collectBtn").onclick=()=>localCollect(false);$("refreshBtn").onclick=loadServer;
+$("saveSettings").onclick=()=>{localStorage.setItem("regional.api",$("apiUrl").value.trim());localStorage.setItem("regional.collector",$("collectorUrl").value.trim());msg("collectState","บันทึกการตั้งค่าบนเครื่องนี้แล้ว","ok")};
+$("importBtn").onclick=async()=>{let f=$("jsonFile").files[0];if(!f){msg("collectState","กรุณาเลือก JSON ก่อน","warn");return}try{rows=normalize(JSON.parse(await f.text()));source="import";render();msg("collectState","นำเข้า JSON เพื่อดูตัวอย่าง "+rows.length+" รายการ (ยังไม่ได้เก็บบน Server)","ok")}catch(e){msg("collectState","JSON ไม่ถูกต้อง: "+e.message,"err")}};
+$("downloadBtn").onclick=exportView;
+let ok=await loadServer();if(ok&&source==="server")await autoCollect();else if(!cfg().api)msg("collectState","ยังไม่ได้ตั้งค่า Server API ระบบ Auto Collect จะเริ่มทำงานเมื่อกำหนด Backend และ Local Collector แล้ว","warn")}
+init();
+</script></body></html>
