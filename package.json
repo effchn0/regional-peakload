@@ -5,7 +5,8 @@
   "scripts": {
     "collect": "node collector/cli.mjs",
     "collector:server": "node collector/server.mjs",
-    "test": "node --test collector/*.test.mjs"
+    "test": "node --test collector/*.test.mjs",
+    "gateway:server": "node gateway/server.mjs"
   },
   "engines": {
     "node": ">=20"
