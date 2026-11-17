@@ -38,7 +38,7 @@ const dateTH=s=>s?new Date(s+"T12:00:00").toLocaleDateString("th-TH",{day:"numer
 const msg=(id,text,type="")=>{$(id).textContent=text;$(id).className="status "+type};
 const setOptions=(id)=>months.forEach((t,i)=>$(id).add(new Option(t,String(i+1))));
 const monthPath=(y,m)=>"data/"+y+"-"+pad(m)+".json";
-function cfg(){return {collector:localStorage.getItem("regional.collector")||""}}
+function cfg(){const saved=localStorage.getItem("regional.collector")||"";return {collector:/^https:\/\//i.test(saved)?saved:""}}
 function validate(d,y,m){
  if(d.schemaVersion!==1||d.source!=="EGAT Monthly Requirement"||d.isMock!==false||d.year!==y||d.month!==m||!Array.isArray(d.rows))throw Error("รูปแบบ JSON ไม่ถูกต้อง");
  const seen=new Set();
@@ -64,7 +64,7 @@ async function loadPublished(){
  try{response=await fetch(monthPath(y,m),{cache:"no-store",signal:AbortSignal.timeout(10000)})}
  catch(e){if(seq===requestSeq)msg("state","ไม่สามารถโหลดไฟล์ที่เผยแพร่ได้: "+e.message,"err");return}
  if(seq!==requestSeq)return;
- if(response.status===404){rows=[];current=null;preview=false;render();msg("state","ยังไม่มีข้อมูลสำหรับ "+months[m-1]+" "+y+" (ไม่มีไฟล์ "+monthPath(y,m)+")","warn");return}
+ if(response.status===404){rows=[];current=null;preview=false;render();msg("state","ไม่มีข้อมูลย้อนหลังที่เผยแพร่สำหรับ "+months[m-1]+" "+y+" • หากอยู่ในเครือข่าย EGAT และมี HTTPS Collector Gateway ที่ได้รับอนุญาต ให้กด Collect Data เพื่อแสดงข้อมูลทันที","warn");return}
  if(!response.ok){rows=[];current=null;render();msg("state","เปิดไฟล์ข้อมูลไม่สำเร็จ HTTP "+response.status,"err");return}
  try{
   const doc=await response.json();rows=validate(doc,y,m);current=doc;preview=false;render();
@@ -145,7 +145,7 @@ async function init(){
  $("region").value="south";$("viewMonth").value=String(now.getMonth()+1);
  $("viewYear").value=$("collectYear").value=now.getFullYear();
  $("fromMonth").value="1";$("toMonth").value=String(now.getMonth()+1);
- $("collectorUrl").value=cfg().collector;
+ $("collectorUrl").value=cfg().collector; if(localStorage.getItem("regional.collector") && !cfg().collector)msg("collectState","ค่า Collector เดิมเป็น HTTP/localhost ซึ่งใช้ข้ามเครื่องไม่ได้ กรุณาตั้งค่า HTTPS Gateway ภายใน EGAT","warn");
  $("showBtn").onclick=async()=>{await loadPublished();await autoCheck()};
  $("region").onchange=render;$("alarmThreshold").oninput=render;$("axisMin").oninput=render;
  $("axisReset").onclick=()=>{$("axisMin").value="";render()};
