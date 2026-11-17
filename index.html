@@ -70,15 +70,15 @@ async function loadPublished(){
   msg("state","ข้อมูลที่เก็บไว้ ไม่ใช่ Live • เก็บเมื่อ "+new Date(doc.collectedAt).toLocaleString("th-TH")+" • "+rows.length+" วัน","ok");
  }catch(e){rows=[];current=null;render();msg("state","ข้อมูล JSON ไม่ผ่านการตรวจสอบ: "+e.message,"err")}
 }
-function selection(){const key=$("region").value;return rows.map(r=>({date:r.date,region:key,...r[key]}))}
+function latestActualDate(){return rows.slice().reverse().find(r=>regions.some(([,key])=>r[key]?.demand!==null))?.date||null}\nfunction selection(){const key=$("region").value;return rows.map(r=>({date:r.date,region:key,...r[key]}))}
 function render(){
  const a=selection(),v=a.filter(r=>r.demand!==null),raw=$("alarmThreshold").value,threshold=raw===""?null:Number(raw);
  const alarms=threshold===null?[]:v.filter(r=>r.demand>threshold);
  $("peak").textContent=v.length?fmt(Math.max(...v.map(r=>r.demand)))+" MW":"–";
  $("avg").textContent=v.length?fmt(v.reduce((s,r)=>s+r.demand,0)/v.length)+" MW":"–";
  $("alarmCount").textContent=threshold===null?"กำหนดเกณฑ์ก่อน":alarms.length;
- $("lastData").textContent=dateTH(rows.at(-1)?.date);
- $("serverLast").textContent=dateTH(rows.at(-1)?.date);
+ $("lastData").textContent=dateTH(latestActualDate());
+ $("serverLast").textContent=dateTH(latestActualDate());
  $("lastCollect").textContent=current?.collectedAt?new Date(current.collectedAt).toLocaleString("th-TH"):"–";
  $("sourceBadge").textContent=preview?"JSON Preview (ไม่เผยแพร่)":current?"EGAT Monthly Requirement • Stored":"ไม่มีข้อมูล";
  $("chartRange").textContent=months[Number($("viewMonth").value)-1]+" "+$("viewYear").value;
@@ -112,7 +112,7 @@ async function collect(auto=false){
 }
 async function autoCheck(){
  if(preview)return;
- const last=rows.at(-1)?.date,day=new Date(),today=new Date(day.getFullYear(),day.getMonth(),day.getDate());
+ const last=latestActualDate(),day=new Date(),today=new Date(day.getFullYear(),day.getMonth(),day.getDate());
  if(last){const lastDate=new Date(last+"T12:00:00");if((today-lastDate)/86400000<=1)return}
  const todayYear=day.getFullYear(),todayMonth=day.getMonth()+1;
  if(Number($("viewYear").value)!==todayYear||Number($("viewMonth").value)!==todayMonth)return;
