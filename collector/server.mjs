@@ -9,7 +9,7 @@ const API=(process.env.SERVER_API_URL||"").replace(/\/$/,"");
 const TOKEN=process.env.SERVER_WRITE_TOKEN||"";
 const SOURCE=process.env.EGAT_DATA_URL||"";
 const MONTHS=Array.from({length:12},(_,i)=>i+1);
-const output=(res,status,data)=>{res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Access-Control-Allow-Origin":ORIGIN,"Access-Control-Allow-Methods":"GET,POST,OPTIONS","Access-Control-Allow-Headers":"Content-Type","Cache-Control":"no-store","Vary":"Origin"});res.end(JSON.stringify(data))};
+const output=(res,status,data)=>{res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Access-Control-Allow-Origin":ORIGIN,"Access-Control-Allow-Methods":"GET,POST,OPTIONS","Access-Control-Allow-Headers":"Content-Type","Access-Control-Allow-Private-Network":"true","Cache-Control":"no-store","Vary":"Origin"});res.end(JSON.stringify(data))};
 function requireValidURL(value,requireHttps){let u=new URL(value);if(requireHttps&&u.protocol!=="https:")throw Error("HTTPS URL required");return u}
 async function runCollect(payload){
  if(!API||!TOKEN||!SOURCE)throw Error("Collector ยังไม่ตั้งค่า SERVER_API_URL, SERVER_WRITE_TOKEN, EGAT_DATA_URL");
@@ -33,9 +33,9 @@ async function runCollect(payload){
  return {count:all.length,saved:body.total};
 }
 http.createServer(async(req,res)=>{
- if(req.method==="OPTIONS")return output(res,204,{});
+ if(req.method==="OPTIONS"){if(req.headers.origin && req.headers.origin!==ORIGIN)return output(res,403,{error:"Origin not permitted"});return output(res,204,{})}
  if(req.headers.origin && req.headers.origin!==ORIGIN)return output(res,403,{error:"Origin not permitted"});
- if(req.url==="/health"&&req.method==="GET")return output(res,200,{ready:Boolean(API&&TOKEN&&SOURCE)});
+ if(req.url==="/health"&&req.method==="GET")return output(res,200,{ready:Boolean(API&&TOKEN&&SOURCE),configured:{server:Boolean(API),writeToken:Boolean(TOKEN),egatSource:Boolean(SOURCE)}});
  if(req.url!=="/collect"||req.method!=="POST")return output(res,404,{error:"Not found"});
  try{
   let data="";for await(const chunk of req){data+=chunk;if(data.length>8192)throw Error("Payload too large")}
