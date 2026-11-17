@@ -19,10 +19,10 @@
 <div class="row"><div class="field"><label>ตั้งแต่เดือน</label><select id="fromMonth"></select></div><div class="field"><label>ถึงเดือน</label><select id="toMonth"></select></div><div class="field"><label>ปี (ค.ศ.)</label><input type="number" min="2000" max="2100" id="collectYear"></div><button id="collectBtn" class="primary">Collect Data</button><button id="refreshBtn" class="ghost">โหลดข้อมูลที่เผยแพร่</button></div>
 <div id="collectState" class="status">Collector จะทำงานได้เมื่อเครื่องเข้าถึงบริการภายใน EGAT ที่ตั้งค่าไว้</div>
 <div class="two"><div><div class="muted">Last Collect (ไฟล์ที่เผยแพร่)</div><strong id="lastCollect">–</strong></div><div><div class="muted">ข้อมูลล่าสุดที่เผยแพร่</div><strong id="serverLast">–</strong></div></div>
-<p class="note">Collect จากเครื่องภายใน EGAT แล้วแสดงกราฟทันทีโดยไม่ต้อง Git Push; Collector เก็บ JSON ในเครื่องและส่งเฉพาะข้อมูลที่ประมวลผลแล้วกลับมาที่ Browser หากต้องการเปิดดูจากภายนอก ต้องเผยแพร่ข้อมูลที่ได้รับอนุญาตแยกต่างหาก</p>
+<p class="note">กด Collect จากเครื่องที่เข้าถึง HTTPS Collector Gateway ภายใน EGAT ได้ เพื่อแสดงกราฟทันที ไม่ต้องติดตั้ง Collector ทุกเครื่อง หากยังไม่มี Gateway ต้องให้ระบบเครือข่ายตั้งค่าบริการนี้ก่อน; ข้อมูลเผยแพร่ภายนอกต้องผ่านการอนุญาต</p>
 <details style="margin-top:15px"><summary style="cursor:pointer">ตั้งค่าการเชื่อมต่อ / นำเข้า JSON</summary>
-<div class="row" style="margin-top:12px"><div class="field" style="min-width:230px"><label>Local Collector URL</label><input id="collectorUrl" type="url" placeholder="http://127.0.0.1:8765"></div><button id="saveSettings" class="ghost">บันทึกค่าในเครื่อง</button></div>
-<p class="note">เมื่อกด Collect จะอ่านข้อมูลตรงจาก Local Collector และแสดงผลทันทีใน Browser ส่วน data/YYYY-MM.json ใช้เป็นข้อมูลย้อนหลังที่เผยแพร่แล้วเท่านั้น; ไม่ส่ง Cookie, Session หรือ Hidden Fields ขึ้น GitHub</p>
+<div class="row" style="margin-top:12px"><div class="field" style="min-width:280px"><label>EGAT Collector Gateway (HTTPS ที่ได้รับอนุญาต)</label><input id="collectorUrl" type="url" placeholder="https://collector.internal.example"></div><button id="saveSettings" class="ghost">บันทึกค่าในเครื่อง</button></div>
+<p class="note">เครื่องใดในเครือข่าย EGAT ที่เข้าถึง HTTPS Collector Gateway ที่ได้รับอนุญาต จะ Collect ได้โดยไม่ต้องติดตั้งโปรแกรมรายเครื่อง • GitHub Pages ไม่สามารถติดต่อ EGAT HTTP ได้โดยตรง • ไม่ส่ง Cookie, Session หรือ Hidden Fields ขึ้น GitHub</p>
 <div class="row" style="margin-top:10px"><input type="file" id="jsonFile" accept=".json,application/json"><button id="importBtn" class="ghost">ตรวจสอบ JSON</button><button id="downloadBtn" class="ghost">ส่งออก JSON ที่แสดง</button></div><p class="note">การนำเข้า JSON เป็น Preview เท่านั้น ไม่เขียนทับไฟล์เผยแพร่หรือสร้างข้อมูล Mock</p>
 </details></section>
 <section class="card"><div class="sectionhead"><h2>ตาราง Peak รายวันและเวลา</h2><span class="muted">Demand / Peak time ตามที่รายงานใน EGAT</span></div><div class="tablewrap"><table><thead><tr><th>วันที่</th><th>เวลา Peak</th><th style="text-align:right">Demand (MW)</th><th style="text-align:right">Generation (MW)</th><th style="text-align:right">Export (MW)</th></tr></thead><tbody id="peakRows"><tr><td colspan="5">–</td></tr></tbody></table></div><p class="note">Demand ของ “รวม” ใช้ค่ารวมที่ต้นทางรายงาน ไม่ได้บวกค่า Peak ของแต่ละภาค • หน่วย MW กำหนดโดยโครงการ</p></section>
@@ -38,7 +38,7 @@ const dateTH=s=>s?new Date(s+"T12:00:00").toLocaleDateString("th-TH",{day:"numer
 const msg=(id,text,type="")=>{$(id).textContent=text;$(id).className="status "+type};
 const setOptions=(id)=>months.forEach((t,i)=>$(id).add(new Option(t,String(i+1))));
 const monthPath=(y,m)=>"data/"+y+"-"+pad(m)+".json";
-function cfg(){return {collector:localStorage.getItem("regional.collector")||"http://127.0.0.1:8765"}}
+function cfg(){return {collector:localStorage.getItem("regional.collector")||""}}
 function validate(d,y,m){
  if(d.schemaVersion!==1||d.source!=="EGAT Monthly Requirement"||d.isMock!==false||d.year!==y||d.month!==m||!Array.isArray(d.rows))throw Error("รูปแบบ JSON ไม่ถูกต้อง");
  const seen=new Set();
@@ -98,14 +98,18 @@ function render(){
 async function collect(auto=false){
  const year=Number($("collectYear").value),fromMonth=Number($("fromMonth").value),toMonth=Number($("toMonth").value);
  if(!Number.isInteger(year)||year<2000||year>2100||fromMonth>toMonth)return msg("collectState","กรุณาตรวจสอบปีและช่วงเดือน","warn");
- const url=cfg().collector.replace(/\/$/,""),button=$("collectBtn");button.disabled=true;
- msg("collectState",(auto?"Auto Collect":"Manual Collect")+" — กำลังติดต่อ Local Collector …");
+ const url=cfg().collector.replace(/\/$/,""),button=$("collectBtn");
+ if(!url)return msg("collectState","ยังไม่ได้ตั้งค่า HTTPS Collector Gateway ภายใน EGAT • GitHub Pages ไม่สามารถดึงข้อมูลจาก HTTP EGAT โดยตรงได้","warn");
+ let target;try{target=new URL(url)}catch{return msg("collectState","URL ของ Collector Gateway ไม่ถูกต้อง","warn")}
+ if(target.protocol!=="https:")return msg("collectState","Collector Gateway ต้องใช้ HTTPS ที่ได้รับอนุญาต ห้ามใช้ localhost หรือ HTTP เพื่อทำงานข้ามเครื่อง","warn");
+ button.disabled=true;
+ msg("collectState",(auto?"Auto Collect":"Manual Collect")+" — กำลังติดต่อ EGAT Collector Gateway …");
  try{
   let h;
   try{h=await fetch(url+"/health",{signal:AbortSignal.timeout(4000),cache:"no-store"})}
-  catch{throw Error("ไม่พบ Local Collector ที่ "+url+" — ต้องรัน Node.js Collector บนเครื่องภายใน EGAT หรือ Browser ไม่อนุญาต Local Network")}
+  catch{throw Error("เข้าถึง EGAT Collector Gateway ไม่ได้: "+url+" — ตรวจสอบว่าต่อเครือข่าย EGAT/VPN, มี HTTPS Gateway และอนุญาต CORS แล้ว")}
   if(!h.ok)throw Error("Collector HTTP "+h.status);
-  const ready=await h.json();if(!ready.ready)throw Error("Collector ยังไม่พร้อม");
+  const ready=await h.json();if(!ready.ready)throw Error("EGAT Collector Gateway ยังไม่พร้อม");
   const res=await fetch(url+"/collect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({year,fromMonth,toMonth}),signal:AbortSignal.timeout(180000)});
   const payload=await res.json().catch(()=>({}));if(!res.ok)throw Error(payload.error||"HTTP "+res.status);
   if(!Array.isArray(payload.documents)||payload.documents.length!==toMonth-fromMonth+1)throw Error("Collector ไม่ได้ส่งข้อมูลรายเดือนกลับมา");
@@ -119,7 +123,7 @@ async function collect(auto=false){
   current=shown.doc;rows=shown.rows;preview=false;render();
   const when=new Date(shown.doc.collectedAt).toLocaleString("th-TH");
   msg("state","Collect จาก EGAT สำเร็จ • แสดงข้อมูล "+rows.length+" วันทันที • "+when+" • ข้อมูลเฉพาะ Browser นี้ ยังไม่เผยแพร่บน GitHub","ok");
-  msg("collectState","Collect สำเร็จ "+payload.months+" เดือน ("+payload.count+" แถว) • แสดงกราฟและตารางแล้ว ข้อมูลบันทึกไว้ในเครื่อง Collector แต่ยังไม่เผยแพร่บน GitHub","ok");
+  msg("collectState","Collect สำเร็จ "+payload.months+" เดือน ("+payload.count+" แถว) • แสดงกราฟและตารางแล้ว ข้อมูลอยู่ในหน่วยความจำ Browser และ Gateway; ยังไม่เผยแพร่บน GitHub","ok");
  }catch(e){msg("collectState","Collect ไม่สำเร็จ: "+e.message+". ไม่สามารถสรุปจาก Failed to fetch อย่างเดียวว่าอยู่นอกเครือข่าย EGAT","err")}
  finally{button.disabled=false}
 }
@@ -146,7 +150,7 @@ async function init(){
  $("region").onchange=render;$("alarmThreshold").oninput=render;$("axisMin").oninput=render;
  $("axisReset").onclick=()=>{$("axisMin").value="";render()};
  $("collectBtn").onclick=()=>collect(false);$("refreshBtn").onclick=loadPublished;
- $("saveSettings").onclick=()=>{localStorage.setItem("regional.collector",$("collectorUrl").value.trim());msg("collectState","บันทึก Collector URL บน Browser นี้แล้ว","ok")};
+ $("saveSettings").onclick=()=>{localStorage.setItem("regional.collector",$("collectorUrl").value.trim());msg("collectState","บันทึก HTTPS Gateway URL บน Browser นี้แล้ว","ok")};
  $("importBtn").onclick=async()=>{const file=$("jsonFile").files[0];if(!file)return msg("collectState","กรุณาเลือก JSON","warn");try{const doc=JSON.parse(await file.text());rows=validate(doc,Number(doc.year),Number(doc.month));$("viewYear").value=doc.year;$("viewMonth").value=doc.month;current=doc;preview=true;render();msg("collectState","ตรวจสอบ JSON สำเร็จ (Preview เท่านั้น ไม่ได้เผยแพร่)","ok")}catch(e){msg("collectState","JSON ไม่ถูกต้อง: "+e.message,"err")}};
  $("downloadBtn").onclick=exportView;
  await loadPublished();await autoCheck();
