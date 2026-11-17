@@ -5,6 +5,16 @@
 
 The GitHub Pages dashboard reads only **approved, published** monthly JSON files from relative paths `data/YYYY-MM.json`. It does not contact EGAT from GitHub Pages or a GitHub-hosted runner. There is **no automatic Mock fallback**.
 
+## Existing ChatGPT Site monthly API (snapshot fallback)
+
+The dashboard optionally requests `https://effchn-peakload.chalermphol-ko132.chatgpt.site/monthly?year=YYYY&month=MM` (the already-working API). It uses `credentials: omit` and never sends an EGAT cookie or hidden field. This is a **cross-origin browser fetch** and works only if the old site explicitly permits GitHub Pages via CORS; there is no browser-side bypass.
+
+The existing API response may have `transport: "internal-snapshot"`, `connectionStatus: "source_unreachable"` and `isMock: false`. This means **stored real EGAT data**, not a successful new collection. The UI shows that distinction and the original `collectedAt`. A successful HTTP 200 alone is not proof of live collection.
+
+If CORS is not allowed, export the JSON response from the original Site and use the existing Dashboard **ตรวจสอบ JSON** preview to inspect it locally. Do not publish EGAT data to a public GitHub repository without explicit organizational authorization.
+
+**Important:** The previous ChatGPT Site backend itself reported that it could not reach EGAT at the most recent attempt. A shared authorized internal HTTPS Gateway, with authentication and CORS, is still needed for actual new collection from every EGAT machine. The static GitHub Pages frontend cannot create that internal network access by itself.
+
 ## Shared Collect from any EGAT-network computer (new)
 
 The dashboard no longer defaults to `127.0.0.1:8765`. For collection on **any EGAT-connected workstation without installing anything on workstations**, deploy the **shared collector Gateway** on a single *approved internal server* and expose it via an **authenticated, authorized HTTPS reverse proxy**.
