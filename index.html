@@ -63,11 +63,21 @@ async function localCollect(auto=false){let c=cfg().collector.replace(/\/$/,"");
 const y=Number($("collectYear").value),a=Number($("fromMonth").value),b=Number($("toMonth").value);
 if(a>b){msg("collectState","เดือนเริ่มต้นต้องไม่เกินเดือนสิ้นสุด","warn");return}
 let button=$("collectBtn");button.disabled=true;msg("collectState",(auto?"Auto Collect":"Manual Collect")+" — กำลังตรวจสอบ Collector ภายใน EGAT…");
-try{let health=await fetch(c+"/health",{signal:timeout(4000)});if(!health.ok)throw Error("Collector ไม่พร้อมใช้งาน");
-let res=await fetch(c+"/collect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({year:y,fromMonth:a,toMonth:b}),signal:timeout(120000)});
-let payload=await res.json().catch(()=>({}));if(!res.ok)throw Error(payload.error||"HTTP "+res.status);
-$("lastCollect").textContent=new Date().toLocaleString("th-TH");msg("collectState","Collect สำเร็จ: "+(payload.count??"–")+" รายการ — โหลดข้อมูล Server ใหม่","ok");await loadServer()
-}catch(e){msg("collectState","ไม่สามารถ Collect จากภายนอกเครือข่าย EGAT หรือ Local Collector ไม่พร้อมใช้งาน ("+e.message+"). กรุณาเชื่อมต่อเครือข่าย EGAT/VPN ที่ได้รับอนุญาต และเปิด Collector ภายในเครื่อง","err")}
+try{
+ if(!cfg().api)throw Error("ยังไม่ได้กำหนด Server API URL สำหรับจัดเก็บข้อมูลถาวร");
+ let health;
+ try{health=await fetch(c+"/health",{signal:timeout(4000),cache:"no-store"})}
+ catch(e){throw Error("ติดต่อ Local Collector ที่ "+c+" ไม่ได้ (Failed to fetch). โปรดเปิด Collector บนเครื่องนี้ แล้วลองเปิด "+c+"/health ใน Browser; หากเปิดได้แต่หน้าเว็บเชื่อมต่อไม่ได้ ให้ตรวจสอบ CORS/Local Network Access ของ Browser")}
+ if(!health.ok)throw Error("Local Collector ตอบกลับ HTTP "+health.status);
+ let info=await health.json().catch(()=>({}));
+ if(info.ready!==true)throw Error("พบ Local Collector แล้ว แต่ยังตั้งค่าไม่ครบ (SERVER_API_URL, SERVER_WRITE_TOKEN หรือ EGAT_DATA_URL)");
+ let res;
+ try{res=await fetch(c+"/collect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({year:y,fromMonth:a,toMonth:b}),signal:timeout(120000)})}
+ catch(e){throw Error("เชื่อมต่อ Local Collector ระหว่าง Collect ไม่สำเร็จ ("+e.message+")")}
+ let payload=await res.json().catch(()=>({}));
+ if(!res.ok)throw Error(payload.error||"Collector HTTP "+res.status);
+ $("lastCollect").textContent=new Date().toLocaleString("th-TH");msg("collectState","Collect และบันทึกสำเร็จ: "+(payload.count??"–")+" รายการ — กำลังอ่านจาก Server","ok");await loadServer()
+}catch(e){msg("collectState","ไม่สามารถ Collect ได้: "+e.message+". การเชื่อมต่อไม่สำเร็จเพียงอย่างเดียวไม่สามารถยืนยันได้ว่าเครื่องอยู่นอกเครือข่าย EGAT","err")}
 finally{button.disabled=false}}
 async function autoCollect(){let last=latest(),today=isoLocal(new Date());if(last&&Math.round((Date.parse(today)-Date.parse(last))/86400000)<=1)return;let d=last?new Date(last+"T12:00:00"):new Date();if(!last)d.setMonth(d.getMonth()-1);$("collectYear").value=now.getFullYear();$("fromMonth").value=String(d.getFullYear()===now.getFullYear()?d.getMonth()+1:1);$("toMonth").value=String(now.getMonth()+1);
 await localCollect(true)}
