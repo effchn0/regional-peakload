@@ -29,6 +29,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: Write deployment timestamp
+        run: |
+          node -e 'require("fs").writeFileSync("version.json", JSON.stringify({deployedAt: new Date().toISOString(), commit: process.env.GITHUB_SHA}) + "\\n")'
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
