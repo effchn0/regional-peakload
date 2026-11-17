@@ -19,10 +19,10 @@
 <div class="row"><div class="field"><label>ตั้งแต่เดือน</label><select id="fromMonth"></select></div><div class="field"><label>ถึงเดือน</label><select id="toMonth"></select></div><div class="field"><label>ปี (ค.ศ.)</label><input type="number" min="2000" max="2100" id="collectYear"></div><button id="collectBtn" class="primary">Collect Data</button><button id="refreshBtn" class="ghost">โหลดข้อมูลที่เผยแพร่</button></div>
 <div id="collectState" class="status">Collector จะทำงานได้เมื่อเครื่องเข้าถึงบริการภายใน EGAT ที่ตั้งค่าไว้</div>
 <div class="two"><div><div class="muted">Last Collect (ไฟล์ที่เผยแพร่)</div><strong id="lastCollect">–</strong></div><div><div class="muted">ข้อมูลล่าสุดที่เผยแพร่</div><strong id="serverLast">–</strong></div></div>
-<p class="note">Collector รันในเครื่องภายใน EGAT เพื่อสร้างไฟล์ JSON ใน Local Repository เท่านั้น ต้องตรวจสอบแล้ว Push ไฟล์ data/ ก่อนข้อมูลจะแสดงบนเว็บไซต์ หากข้อมูลล่าช้าเกิน 1 วัน เว็บไซต์จะลองสั่ง Local Collector เมื่อเปิดเว็บ แต่จะไม่เผยแพร่เอง</p>
+<p class="note">Collect จากเครื่องภายใน EGAT แล้วแสดงกราฟทันทีโดยไม่ต้อง Git Push; Collector เก็บ JSON ในเครื่องและส่งเฉพาะข้อมูลที่ประมวลผลแล้วกลับมาที่ Browser หากต้องการเปิดดูจากภายนอก ต้องเผยแพร่ข้อมูลที่ได้รับอนุญาตแยกต่างหาก</p>
 <details style="margin-top:15px"><summary style="cursor:pointer">ตั้งค่าการเชื่อมต่อ / นำเข้า JSON</summary>
 <div class="row" style="margin-top:12px"><div class="field" style="min-width:230px"><label>Local Collector URL</label><input id="collectorUrl" type="url" placeholder="http://127.0.0.1:8765"></div><button id="saveSettings" class="ghost">บันทึกค่าในเครื่อง</button></div>
-<p class="note">GitHub Pages อ่าน JSON จาก data/YYYY-MM.json ตามเดือน/ปีเท่านั้น ข้อมูลไม่ใช่ Live การ Collect ใช้ Node.js ภายใน EGAT และจะไม่ส่ง Cookie, Session หรือ Hidden Fields ไป GitHub</p>
+<p class="note">เมื่อกด Collect จะอ่านข้อมูลตรงจาก Local Collector และแสดงผลทันทีใน Browser ส่วน data/YYYY-MM.json ใช้เป็นข้อมูลย้อนหลังที่เผยแพร่แล้วเท่านั้น; ไม่ส่ง Cookie, Session หรือ Hidden Fields ขึ้น GitHub</p>
 <div class="row" style="margin-top:10px"><input type="file" id="jsonFile" accept=".json,application/json"><button id="importBtn" class="ghost">ตรวจสอบ JSON</button><button id="downloadBtn" class="ghost">ส่งออก JSON ที่แสดง</button></div><p class="note">การนำเข้า JSON เป็น Preview เท่านั้น ไม่เขียนทับไฟล์เผยแพร่หรือสร้างข้อมูล Mock</p>
 </details></section>
 <section class="card"><div class="sectionhead"><h2>ตาราง Peak รายวันและเวลา</h2><span class="muted">Demand / Peak time ตามที่รายงานใน EGAT</span></div><div class="tablewrap"><table><thead><tr><th>วันที่</th><th>เวลา Peak</th><th style="text-align:right">Demand (MW)</th><th style="text-align:right">Generation (MW)</th><th style="text-align:right">Export (MW)</th></tr></thead><tbody id="peakRows"><tr><td colspan="5">–</td></tr></tbody></table></div><p class="note">Demand ของ “รวม” ใช้ค่ารวมที่ต้นทางรายงาน ไม่ได้บวกค่า Peak ของแต่ละภาค • หน่วย MW กำหนดโดยโครงการ</p></section>
@@ -108,7 +108,18 @@ async function collect(auto=false){
   const ready=await h.json();if(!ready.ready)throw Error("Collector ยังไม่พร้อม");
   const res=await fetch(url+"/collect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({year,fromMonth,toMonth}),signal:AbortSignal.timeout(180000)});
   const payload=await res.json().catch(()=>({}));if(!res.ok)throw Error(payload.error||"HTTP "+res.status);
-  msg("collectState","สร้าง JSON ในเครื่อง Collector สำเร็จ "+payload.months+" เดือน ("+payload.count+" แถว) • ยังไม่เผยแพร่ กรุณาตรวจสอบไฟล์ data/ แล้ว Git Push ไป Repository","ok");
+  if(!Array.isArray(payload.documents)||payload.documents.length!==toMonth-fromMonth+1)throw Error("Collector ไม่ได้ส่งข้อมูลรายเดือนกลับมา");
+  const validated=payload.documents.map(doc=>({doc,rows:validate(doc,Number(doc.year),Number(doc.month))}));
+  // If the displayed month is inside the collected range, show it; otherwise show the final month collected.
+  const currentYear=Number($("viewYear").value),currentMonth=Number($("viewMonth").value);
+  const shown=validated.find(x=>x.doc.year===currentYear&&x.doc.month===currentMonth)||validated.at(-1);
+  ++requestSeq; // prevent a pending published-file request from replacing freshly collected data
+  $("viewYear").value=String(shown.doc.year);
+  $("viewMonth").value=String(shown.doc.month);
+  current=shown.doc;rows=shown.rows;preview=false;render();
+  const when=new Date(shown.doc.collectedAt).toLocaleString("th-TH");
+  msg("state","Collect จาก EGAT สำเร็จ • แสดงข้อมูล "+rows.length+" วันทันที • "+when+" • ข้อมูลเฉพาะ Browser นี้ ยังไม่เผยแพร่บน GitHub","ok");
+  msg("collectState","Collect สำเร็จ "+payload.months+" เดือน ("+payload.count+" แถว) • แสดงกราฟและตารางแล้ว ข้อมูลบันทึกไว้ในเครื่อง Collector แต่ยังไม่เผยแพร่บน GitHub","ok");
  }catch(e){msg("collectState","Collect ไม่สำเร็จ: "+e.message+". ไม่สามารถสรุปจาก Failed to fetch อย่างเดียวว่าอยู่นอกเครือข่าย EGAT","err")}
  finally{button.disabled=false}
 }
