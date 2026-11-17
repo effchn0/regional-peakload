@@ -111,7 +111,7 @@ async function collect(auto=false){
  finally{button.disabled=false}
 }
 async function autoCheck(){
- if(!current||preview)return;
+ if(preview)return;
  const last=rows.at(-1)?.date,day=new Date(),today=new Date(day.getFullYear(),day.getMonth(),day.getDate());
  if(last){const lastDate=new Date(last+"T12:00:00");if((today-lastDate)/86400000<=1)return}
  const todayYear=day.getFullYear(),todayMonth=day.getMonth()+1;
