@@ -129,7 +129,7 @@ async function collect(auto=false){
  const year=Number($("collectYear").value),fromMonth=Number($("fromMonth").value),toMonth=Number($("toMonth").value);
  if(!Number.isInteger(year)||year<2000||year>2100||fromMonth>toMonth)return msg("collectState","กรุณาตรวจสอบปีและช่วงเดือน","warn");
  const url=cfg().collector.replace(/\/$/,""),button=$("collectBtn");
- if(!url)return msg("collectState","ยังไม่ได้ตั้งค่า HTTPS Collector Gateway ภายใน EGAT • GitHub Pages ไม่สามารถดึงข้อมูลจาก HTTP EGAT โดยตรงได้","warn");
+ if(!url){msg("collectState","ยังไม่มี HTTPS Gateway • กำลังอ่านเดือนที่เลือกจาก API เดิม (Snapshot อาจไม่ใช่ข้อมูลสด)","warn");return loadLegacy({year,month:Number($("viewMonth").value)});}
  let target;try{target=new URL(url)}catch{return msg("collectState","URL ของ Collector Gateway ไม่ถูกต้อง","warn")}
  if(target.protocol!=="https:")return msg("collectState","Collector Gateway ต้องใช้ HTTPS ที่ได้รับอนุญาต ห้ามใช้ localhost หรือ HTTP เพื่อทำงานข้ามเครื่อง","warn");
  button.disabled=true;
@@ -164,7 +164,7 @@ async function autoCheck(){
  const todayYear=day.getFullYear(),todayMonth=day.getMonth()+1;
  if(Number($("viewYear").value)!==todayYear||Number($("viewMonth").value)!==todayMonth)return;
  $("collectYear").value=todayYear;$("fromMonth").value=todayMonth;$("toMonth").value=todayMonth;
- await collect(true);
+ if(cfg().collector)await collect(true);
 }
 function exportView(){const file=new Blob([JSON.stringify({...(current||{}),rows},null,2)],{type:"application/json"}),url=URL.createObjectURL(file),a=document.createElement("a");a.href=url;a.download="EGAT-"+$("viewYear").value+"-"+pad($("viewMonth").value)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 async function loadCodeStamp(){try{const res=await fetch("version.json",{cache:"no-store",signal:AbortSignal.timeout(7000)});if(!res.ok)return;const data=await res.json();const d=new Date(data.deployedAt);if(!Number.isFinite(d.getTime()))return;const time=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Bangkok",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).format(d);$("codeStamp").textContent="lost code : "+time;}catch{}}
