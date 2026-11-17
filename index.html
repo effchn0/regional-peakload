@@ -70,7 +70,8 @@ async function loadPublished(){
   msg("state","ข้อมูลที่เก็บไว้ ไม่ใช่ Live • เก็บเมื่อ "+new Date(doc.collectedAt).toLocaleString("th-TH")+" • "+rows.length+" วัน","ok");
  }catch(e){rows=[];current=null;render();msg("state","ข้อมูล JSON ไม่ผ่านการตรวจสอบ: "+e.message,"err")}
 }
-function latestActualDate(){return rows.slice().reverse().find(r=>regions.some(([,key])=>r[key]?.demand!==null))?.date||null}\nfunction selection(){const key=$("region").value;return rows.map(r=>({date:r.date,region:key,...r[key]}))}
+function latestActualDate(){return rows.slice().reverse().find(r=>regions.some(([,key])=>r[key]?.demand!==null))?.date||null}
+function selection(){const key=$("region").value;return rows.map(r=>({date:r.date,region:key,...r[key]}))}
 function render(){
  const a=selection(),v=a.filter(r=>r.demand!==null),raw=$("alarmThreshold").value,threshold=raw===""?null:Number(raw);
  const alarms=threshold===null?[]:v.filter(r=>r.demand>threshold);
