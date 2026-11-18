@@ -1,5 +1,12 @@
 name: Sync Regional Peak Load to Google Apps Script
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'gas/Code.gs'
+      - 'gas/Bridge.html'
+      - 'gas/appsscript.json'
+      - '.github/workflows/sync-appsscript.yml'
   workflow_dispatch:
 permissions:
   contents: read
