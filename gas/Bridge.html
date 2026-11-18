@@ -1,0 +1,33 @@
+<!doctype html><html lang="th"><head><base target="_top"><meta charset="utf-8"><title>EGAT API Bridge</title><style>body{font:13px system-ui,sans-serif;color:#31455d;margin:8px}button{padding:6px}</style></head><body>
+<div id="state">EGAT Apps Script Bridge • รอการเชื่อมต่อจาก Dashboard</div>
+<script>
+(function(){
+ "use strict";
+ var allowed='<?= origin ?>', version='<?= version ?>';
+ var state=document.getElementById("state");
+ function send(message){window.parent.postMessage(Object.assign({channel:"EGAT_GAS_BRIDGE",from:"gas",version:version},message),allowed)}
+ window.addEventListener("message",function(event){
+  if(event.origin!==allowed||event.source!==window.parent)return;
+  var p=event.data;
+  if(!p||p.channel!=="EGAT_GAS_BRIDGE"||p.from!=="dashboard"||typeof p.id!=="string"||p.id.length>80)return;
+  if(p.action!=="probe"&&p.action!=="collect")return;
+  state.textContent="กำลัง"+(p.action==="probe"?"ทดสอบการเชื่อมต่อ EGAT":"อ่านข้อมูล EGAT")+"…";
+  var run=google.script.run.withSuccessHandler(function(result){
+   state.textContent="รับคำตอบแล้ว";
+   send({id:p.id,ok:true,result:result});
+  }).withFailureHandler(function(error){
+   var message=error&&error.message||String(error);
+   state.textContent=message;
+   send({id:p.id,ok:false,error:message});
+  });
+  if(p.action==="probe")run.probeSource();
+  else{
+    var year=Number(p.year),month=Number(p.month);
+    if(!Number.isInteger(year)||year<2000||year>2100||!Number.isInteger(month)||month<1||month>12)
+      return send({id:p.id,ok:false,error:"Invalid month/year"});
+    run.collectMonthly(year,month);
+  }
+ });
+ send({action:"ready",ok:true});
+})();
+</script></body></html>
