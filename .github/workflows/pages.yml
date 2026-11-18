@@ -33,6 +33,9 @@ jobs:
           node-version: '22'
       - name: Build original ChatGPT Site design
         run: node scripts/build-site-mirror.mjs
+      - name: Package Chrome/Edge Extension
+        run: |
+          zip -q -r published/egat-collector-extension.zip extension/manifest.json extension/background.js extension/bridge.js
       - name: Write deployment timestamp
         run: |
           node -e 'require("fs").writeFileSync("version.json", JSON.stringify({deployedAt: new Date().toISOString(), commit: process.env.GITHUB_SHA}))'
