@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "EGAT Regional Peak Load Collector",
+  "version": "1.0.0",
+  "description": "Collect EGAT Monthly Requirement using the user's authorized EGAT browser session.",
+  "permissions": [
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://control.egat.co.th/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://effchn0.github.io/regional-peakload/*"
+      ],
+      "js": [
+        "bridge.js"
+      ],
+      "run_at": "document_start"
+    }
+  ]
+}
