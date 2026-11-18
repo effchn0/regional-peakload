@@ -1,7 +1,7 @@
 // Build a pixel-equivalent static mirror of the existing ChatGPT Site's public frontend.
 // This task fetches PUBLIC frontend assets only. It does not fetch EGAT or publish
 // internal data files. Fail deployment if the upstream assets are unavailable.
-import {mkdir,writeFile} from "node:fs/promises";
+import {mkdir,writeFile,readFile} from "node:fs/promises";
 import {resolve} from "node:path";
 const SOURCE="https://effchn-peakload.chalermphol-ko132.chatgpt.site";
 const LEGACY_API=SOURCE;
@@ -41,6 +41,7 @@ function adjust(file,body){
  if(file==="monthly.html"){
   const gatewayUi='<div class="box" style="padding:10px 15px;margin-bottom:12px"><div class="section" style="gap:8px;flex-wrap:wrap"><label for="egatGatewayUrl" style="font-size:12px">EGAT Collector Gateway (HTTPS ภายใน)</label><input id="egatGatewayUrl" type="url" style="flex:1;min-width:220px" placeholder="https://collector.example.egat"><button type="button" id="egatGatewaySave" class="btn">บันทึก</button></div><div class="muted" id="egatGatewayState">เครื่องใน EGAT ใช้ Gateway กลางที่ได้รับอนุญาต • หากไม่มีจะใช้ Snapshot ที่เผยแพร่แล้ว ไม่ใช่ Live</div></div>';
   s=s.replace("</form>","</form>"+gatewayUi);
+  s=s.replace("</body>",'<a href="./lna-test.html" style="position:fixed;bottom:42px;right:12px;z-index:99;background:#fff;border:1px solid #bbcad8;color:#145887;border-radius:7px;padding:5px 9px;font:12px system-ui;text-decoration:none;box-shadow:0 3px 9px #0002">ทดสอบ Intranet (LNA)</a></body>');
  }
  if(file==="index.html"||file==="monthly.html"){
   s=s.replace("</head>",badgeStyle+"</head>");
@@ -54,6 +55,7 @@ for(const file of assets){
  await writeFile(resolve(OUT,file),Buffer.isBuffer(data)?data:adjust(file,data));
  console.log("prepared",file,typeof data==="string"?data.length:data.byteLength);
 }
+await writeFile(resolve(OUT,"lna-test.html"),await readFile(resolve("lna-test.html")));
 await writeFile(resolve(OUT,".nojekyll"),"");
 const stamp=new Date().toISOString();
 await writeFile(resolve(OUT,"version.js"),'document.getElementById("codeStamp").textContent="lost code : "+new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Bangkok",dateStyle:"short",timeStyle:"medium"}).format(new Date('+JSON.stringify(stamp)+'));');
