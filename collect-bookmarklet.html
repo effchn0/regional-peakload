@@ -88,11 +88,12 @@ async function readSavedHtml(){
   const table=page.getElementById("ContentPlaceHolder1_tblReq");
   if(!table)throw Error("ไม่พบตาราง ContentPlaceHolder1_tblReq — ต้องเลือกเดือน/ปีและกดตกลงบน EGAT ก่อนบันทึก");
   const rows=Array.from(table.querySelectorAll("tr")).slice(0,120).map(tr=>Array.from(tr.children).filter(e=>/^(TD|TH)$/.test(e.tagName)).map(c=>({
-   text:(c.textContent||"").replace(/\\s+/g," ").trim().slice(0,140),
+   text:(c.textContent||"").replace(/\s+/g," ").trim().slice(0,140),
    rowspan:Math.min(100,Math.max(1,Number(c.getAttribute("rowspan"))||1)),
    colspan:Math.min(30,Math.max(1,Number(c.getAttribute("colspan"))||1))
   })));
   if(!rows.length)throw Error("ตาราง EGAT ว่างเปล่า");
+  doc=null;
   adopt({app:"egat-monthly-table-bridge",version:1,rows,readAt:new Date().toISOString()});
   if(doc){doc.transport="saved-egat-html";doc.connectionStatus="html-import";$("saveQuick").disabled=false;status("อ่านไฟล์ HTML สำเร็จ "+doc.rows.length+" วัน • เลือก Download JSON ได้เลย • ไม่ส่งข้อมูลไป Server");}
  }catch(e){status("นำเข้า HTML ไม่สำเร็จ: "+e.message,true)}
