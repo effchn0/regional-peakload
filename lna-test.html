@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EGAT Local Network Access · Diagnostic</title>
+<style>
+:root{font:15px/1.65 system-ui,"Noto Sans Thai",sans-serif;background:#f2f6fa;color:#17304b}body{margin:0}header{background:#123456;color:white;padding:20px max(20px,calc((100% - 960px)/2))}h1{font-size:22px;margin:0}.wrap{max-width:960px;margin:25px auto;padding:0 15px}.box{background:white;border:1px solid #e0e9f3;border-radius:14px;padding:20px;margin-bottom:15px}.muted{color:#62768b;font-size:13px}button{padding:10px 17px;background:#176bb7;color:white;border:0;border-radius:9px;font:inherit;cursor:pointer}button:disabled{opacity:.6}a{color:#126ab2}.step{padding:10px;border-left:4px solid #abb9c8;margin:10px 0;background:#f5f8fc}.ok{border-color:#298a60;background:#edfaf3}.err{border-color:#c65340;background:#fff2f0}.warn{border-color:#d59c25;background:#fff9ea}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;background:#eaf1f7;padding:12px;border-radius:8px}code{font-size:12px}strong{font-weight:700}
+</style></head><body><header><h1>ตรวจสอบ EGAT Intranet จาก GitHub Pages</h1><div>ทดสอบ Local Network Access / CORS / Mixed Content โดยไม่ติดตั้ง Collector</div></header>
+<main class="wrap"><div class="box">
+<p><strong>ต้นทาง:</strong> <code>http://control.egat.co.th/gpddwebsite/MonthlyRequirementNonCoPage.aspx</code></p>
+<p>ใช้ทดสอบบน Chrome/Edge จากเครื่องภายใน EGAT โดยกดปุ่มเอง หาก Browser ขอสิทธิ์เข้าถึง Local Network ให้พิจารณาอนุญาตเฉพาะเมื่อเว็บไซต์นี้เป็นเว็บไซต์ที่คุณเชื่อถือ การทดสอบนี้ไม่ส่ง Cookie, Password หรือ POST ใด ๆ ไปยัง EGAT</p>
+<button id="run">ทดสอบเชื่อมต่อ Intranet</button> <a href="./monthly.html">กลับไป Monthly Requirement</a>
+<p class="muted" id="meta">Browser: –</p>
+<div id="results" role="status" aria-live="polite"><div class="step">ยังไม่ได้ทดสอบ</div></div>
+</div><div class="box"><strong>การอ่านผล</strong><p>ถ้า GET แบบ CORS สำเร็จและอ่าน HTML ได้ จะเป็นหลักฐานว่า Browser อ่านข้อมูลต้นทางได้จริงในเงื่อนไขการทดสอบนี้ หาก GET ล้มเหลว อาจเกิดจาก Mixed Content, CORS, DNS, Proxy หรือสิทธิ์เครือข่าย ซึ่งแยกสาเหตุได้เพิ่มเติมจากแท็บ Network/Console</p><p>การทดสอบ <code>no-cors</code> ที่ได้ <code>opaque</code> <strong>ไม่สามารถพิสูจน์ว่าเว็บอ่านข้อมูลได้</strong> และไม่สามารถนำไปทำ Collector ได้ เพราะ JavaScript อ่าน Response ไม่ได้</p><p>แม้ GET ผ่าน การ Collect จริงยังต้องใช้ POST WebForms และสิทธิ์ CORS สำหรับคำขอนั้นด้วย</p></div>
+<div class="box"><strong>รายงานสำหรับตรวจสอบ</strong><pre id="report">ยังไม่มีข้อมูลทดสอบ</pre><button id="copy" type="button">คัดลอกรายงาน (ไม่รวมข้อมูล EGAT)</button></div></main>
+<script>
+"use strict";
+const target="http://control.egat.co.th/gpddwebsite/MonthlyRequirementNonCoPage.aspx";
+const $=id=>document.getElementById(id);
+const results=[];
+const run=$("run");const out=$("results");
+$("meta").textContent="Browser: "+navigator.userAgent+" • Secure context: "+isSecureContext;
+function push(name,state,detail){
+ results.push({name,state,detail});const el=document.createElement("div");
+ el.className="step "+(state==="ผ่าน"?"ok":state==="ไม่ผ่าน"?"err":"warn");
+ const title=document.createElement("strong");title.textContent=name+" : "+state;el.append(title);
+ const info=document.createElement("div");info.textContent=detail;el.append(info);out.append(el);
+ $("report").textContent=JSON.stringify({at:new Date().toISOString(),browser:navigator.userAgent,secureContext:isSecureContext,origin:location.origin,results},null,2);
+}
+async function timedFetch(options){
+ const ctl=new AbortController();const timer=setTimeout(()=>ctl.abort("Timeout 12s"),12000);
+ try{return await fetch(target,{...options,signal:ctl.signal,credentials:"omit",cache:"no-store"})}finally{clearTimeout(timer)}
+}
+run.addEventListener("click",async()=>{
+ run.disabled=true;out.replaceChildren();results.length=0;
+ push("รองรับการตั้งค่า targetAddressSpace","กำลังตรวจสอบ","ใช้เฉพาะเป็นคำแนะนำเบื้องต้น ไม่ใช่ผลการเชื่อมต่อ");
+ try{
+   const r=new Request(target,{targetAddressSpace:"local",mode:"cors",credentials:"omit"});
+   push("Browser API","ตรวจพบ", "Request.targetAddressSpace = "+String(r.targetAddressSpace??"ไม่รองรับ/ไม่รายงาน"));
+ }catch(e){push("Browser API","ไม่ผ่าน",e.name+": "+e.message)}
+ try{
+   const r=await timedFetch({targetAddressSpace:"local",mode:"cors"});
+   const body=await r.text();
+   const html=/html|__VIEWSTATE|tblReq/i.test(body);
+   push("GET แบบ CORS",r.ok&&html?"ผ่าน":"ไม่ผ่าน","HTTP "+r.status+" • อ่าน Response ได้ "+body.length+" ตัวอักษร • รูปแบบ HTML ของ EGAT: "+(html?"พบ":"ไม่พบ")+" (ไม่เก็บหรือแสดงเนื้อหา HTML)");
+ }catch(e){push("GET แบบ CORS","ไม่ผ่าน",e.name+": "+e.message+" • ตรวจ Network/Console ว่าเป็น CORS, Mixed Content, DNS หรือ Policy")}
+ try{
+   const r=await timedFetch({targetAddressSpace:"local",mode:"no-cors"});
+   push("GET แบบ no-cors","ตรวจสอบได้บางส่วน","Response type="+r.type+" • Status ที่มองเห็น="+r.status+" • opaque อ่านเนื้อหาไม่ได้ ไม่ถือว่า Collect ผ่าน");
+ }catch(e){push("GET แบบ no-cors","ไม่ผ่าน",e.name+": "+e.message)}
+ push("ผลการ Collect","ยังไม่ได้ทดสอบ","ยังไม่มีการส่ง POST หรือยืนยันการดึงข้อมูลใหม่จริง");
+ run.disabled=false;
+});
+$("copy").addEventListener("click",async()=>{try{await navigator.clipboard.writeText($("report").textContent);$("copy").textContent="คัดลอกแล้ว"}catch{$("copy").textContent="โปรดเลือกข้อความในรายงานเพื่อคัดลอก"}});
+</script></body></html>
