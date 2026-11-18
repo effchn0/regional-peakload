@@ -25,6 +25,22 @@ http.createServer(async(req,res)=>{
  if(req.headers.origin && req.headers.origin!==ORIGIN)return reply(res,403,{error:"Origin not allowed"});
  if(req.method==="OPTIONS")return reply(res,204,{});
  if(req.url==="/health" && req.method==="GET")return reply(res,200,{ready:true,mode:"egat-internal-gateway"});
+ const route=new URL(req.url||"/","http://localhost");
+ if(route.pathname==="/monthly"&&req.method==="GET"){
+  const year=Number(route.searchParams.get("year")),month=Number(route.searchParams.get("month"));
+  if(!Number.isInteger(year)||year<2000||year>2100||!Number.isInteger(month)||month<1||month>12)return reply(res,400,{error:"Invalid year/month"});
+  if(busy)return reply(res,409,{error:"Collector busy"});
+  busy=true;
+  try{
+   // collectRange respects its 15-minute cache; never forwards EGAT credentials.
+   const results=await collectRange(year,month,month,{root:ROOT});
+   const raw=JSON.parse(await readFile(results[0].file,"utf8"));
+   const {schemaVersion,source,year:y,month:m,unit,unitBasis,collectedAt,isMock,rows}=raw;
+   return reply(res,200,{schemaVersion,source,year:y,month:m,unit,unitBasis,collectedAt,isMock,rows,
+    transport:"egat-internal-gateway",connectionStatus:results[0].cached?"cached":"collected",cacheHit:Boolean(results[0].cached)});
+  }catch(e){return reply(res,503,{error:"EGAT collection failed: "+e.message})}
+  finally{busy=false}
+ }
  if(req.url!=="/collect"||req.method!=="POST")return reply(res,404,{error:"Not found"});
  if(busy)return reply(res,409,{error:"Collect already running"});
  busy=true;
