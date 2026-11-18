@@ -57,7 +57,7 @@ function rowGrid_(html) {
      const rs=Math.min(80,Math.max(1,Number((attrs.match(/rowspan\s*=\s*["']?(\d+)/i)||[])[1]||1)));
      const cs=Math.min(25,Math.max(1,Number((attrs.match(/colspan\s*=\s*["']?(\d+)/i)||[])[1]||1)));
      const v=safe_(cell);
-     for(let r=ri;r<ri+rs;r++){grid[r]||=[];for(let c=col;c<col+cs;c++)grid[r][c]=v}
+     for(let r=ri;r<ri+rs;r++){if(!grid[r])grid[r]=[];for(let c=col;c<col+cs;c++)grid[r][c]=v}
      col+=cs;
    });
  });
