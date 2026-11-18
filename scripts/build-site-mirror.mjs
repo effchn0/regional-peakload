@@ -61,6 +61,7 @@ for(const file of assets){
  console.log("prepared",file,typeof data==="string"?data.length:data.byteLength);
 }
 await writeFile(resolve(OUT,"lna-test.html"),await readFile(resolve("lna-test.html")));
+await writeFile(resolve(OUT,"iframe-test.html"),await readFile(resolve("iframe-test.html")));
 await writeFile(resolve(OUT,"extension-guide.html"),await readFile(resolve("extension-guide.html")));
 await writeFile(resolve(OUT,"egat-dashboard-bridge.js"),await readFile(resolve("extension/dashboard.js")));
 await writeFile(resolve(OUT,"collect-bookmarklet.html"),await readFile(resolve("collect-bookmarklet.html")));
