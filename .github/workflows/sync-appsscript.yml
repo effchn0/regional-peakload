@@ -1,0 +1,35 @@
+name: Sync Regional Peak Load to Google Apps Script
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: regional-peakload-appsscript
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify clasp credentials configured
+        env:
+          CLASP_CREDENTIALS: ${{ secrets.CLASP_CREDENTIALS }}
+        run: |
+          if [ -z "$CLASP_CREDENTIALS" ]; then
+            echo "::error::Missing GitHub Actions secret CLASP_CREDENTIALS."
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$CLASP_CREDENTIALS" > "$HOME/.clasprc.json"
+          node -e 'const fs=require("fs");const x=JSON.parse(fs.readFileSync(process.env.HOME+"/.clasprc.json","utf8"));if(!x.tokens&&!x.token)throw Error("Invalid clasp credentials JSON");'
+      - name: Install clasp
+        run: npm install --global @google/clasp
+      - name: Sync code to existing Google Apps Script project
+        working-directory: gas
+        run: clasp push --force
+      - name: List existing Apps Script deployments (read only)
+        working-directory: gas
+        run: clasp deployments
