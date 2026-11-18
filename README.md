@@ -113,3 +113,15 @@ Preserved: monthly/year selectors, per-region load bar chart, High Alarm criteri
 Local Collector is localhost-only and the page origin is restricted to `https://effchn0.github.io`. No Cookie/Session/Hidden Field is uploaded to GitHub, and browser code does not read or transmit EGAT credentials. If local network access is disallowed by browser policy, run the CLI directly on the authorized EGAT computer and review/push JSON separately.
 
 Legacy `backend/worker.js` remains for compatibility but is **not used by this static JSON workflow**.
+
+## Live data on GitHub Pages monthly.html (18 Nov 2026)
+
+The original Monthly Requirement UI remains unchanged except for a compact **EGAT Collector Gateway (HTTPS ภายใน)** connection field. Browser logic in `scripts/build-site-mirror.mjs` reads sources in order:
+
+1. An HTTPS gateway configured in the browser via `egat.gateway.url` (`GET /monthly?year=2026&month=11`). The gateway implementation is `gateway/server.mjs`; it calls the EGAT WebForms collector with 15-minute cache. Deploy once on an EGAT-authorized server behind an authenticated HTTPS reverse proxy with CORS for `https://effchn0.github.io`. It is **not deployed** by GitHub Pages.
+2. An **approved** public `./data/YYYY-MM.json` snapshot if already published.
+3. The prior ChatGPT Site `/monthly` API as an optional browser CORS-permitted fallback. Its prior response was `internal-snapshot` and `source_unreachable` — not a verified live collect.
+
+The frontend marks gateway collection, gateway cache and published snapshots separately. There is **no** direct browser access to EGAT's HTTP ASP.NET endpoint from GitHub Pages, no hidden-field or cookie uploads, and no automatic mock fallback.
+
+The approved gateway address is a prerequisite for fresh EGAT collection from multiple workstations. A GitHub commit cannot supply organizational network routing, TLS certificates or access authorization. Do not point a public unauthenticated gateway at EGAT.
