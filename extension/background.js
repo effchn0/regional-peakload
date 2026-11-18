@@ -96,7 +96,13 @@ async function collect(year,month){
   const tabId=popup.tabs?.[0]?.id;
   if(!tabId)throw Error("Could not open EGAT popup");
   await waitComplete(tabId,18000);
-  await inject(tabId,selectMonthYear,[year,month]);
+  try{
+   await inject(tabId,selectMonthYear,[year,month]);
+  }catch(e){
+   // The form's synchronous submit may unload the frame before executeScript responds.
+   // Treat only frame/navigation teardown as expected, not missing field/permission errors.
+   if(!/frame|context|destroy|navigation|receiving end/i.test(String(e?.message)))throw e;
+  }
   // WebForms may do a full navigation or an async postback.
   const end=Date.now()+COLLECT_TIMEOUT_MS;
   let lastError="";
