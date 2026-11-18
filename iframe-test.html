@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EGAT iframe Test | Regional Peak Load</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f0f5fb;color:#183451;font:15px/1.6 system-ui,"Noto Sans Thai",sans-serif}header{background:#133657;color:#fff;padding:19px max(18px,calc((100% - 1220px)/2))}h1{margin:0;font-size:23px}main{max-width:1220px;margin:22px auto;padding:0 18px}.card{background:white;border:1px solid #d9e4ef;border-radius:13px;padding:17px;margin:14px 0}.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}button,a.btn{font:inherit;background:#166cb7;color:#fff;border:0;border-radius:8px;padding:9px 13px;cursor:pointer;text-decoration:none}button.secondary,a.secondary{background:#e4edf6;color:#175783}button:disabled{opacity:.6}.muted{font-size:13px;color:#63788e}.state{padding:9px 12px;border-radius:8px;background:#eef5fc;margin:12px 0;white-space:pre-wrap}.warning{background:#fff4e1;color:#805600}.frame{position:relative;height:min(72vh,820px);min-height:380px;border:1px solid #c6d8e9;border-radius:9px;overflow:hidden}iframe{display:block;width:100%;height:100%;border:0;background:#fff}code{background:#edf3f9;border-radius:4px;padding:2px 4px;overflow-wrap:anywhere}a{color:#1768aa}
+</style></head><body>
+<header><h1>ทดสอบเปิด EGAT ผ่าน iframe</h1><div>ตรวจการฝังหน้า Intranet และสิทธิ์อ่านตารางจาก GitHub Pages โดยไม่ติดตั้งอะไรเพิ่ม</div></header>
+<main>
+<section class="card"><div class="row"><button id="loadHttp">ลองเปิด HTTP ใน iframe</button><button id="loadHttps" class="secondary">ลอง HTTPS (ถ้า EGAT รองรับ)</button><button id="inspect" class="secondary">ทดสอบอ่านตาราง</button><a class="btn secondary" href="./monthly.html">กลับหน้า Monthly</a></div>
+<div id="status" class="state warning">ยังไม่ได้ทดสอบ กรุณาเปิดหน้านี้จากเครื่องในเครือข่าย EGAT แล้วกดปุ่มลองเปิด HTTP</div>
+<p class="muted">ต้นทาง: <code>http://control.egat.co.th/gpddwebsite/MonthlyRequirementNonCoPage.aspx</code> • หน้านี้ไม่ส่งข้อมูลออกไป ไม่อ่าน Cookie หรือ Session</p>
+</section>
+<section class="card"><strong>กรอบ iframe ของ EGAT</strong>
+<div class="frame"><iframe id="egat" title="EGAT Monthly Requirement (iframe test)" referrerpolicy="no-referrer"></iframe></div>
+<p class="muted">คำเตือน: iframe อาจแสดงพื้นที่ว่าง แม้ event <code>load</code> เกิดขึ้นแล้ว ซึ่งไม่ได้ยืนยันว่าเว็บไซต์ EGAT โหลดสำเร็จ หากไม่แสดงให้เปิด F12 → Console เพื่อดู Mixed Content, X-Frame-Options และ Content-Security-Policy</p></section>
+<section class="card"><strong>ผลตรวจสิทธิ์การอ่านจาก Dashboard</strong><div id="readState" class="state">ยังไม่ได้ทดสอบ</div><p class="muted">หากระบบแจ้ง <code>SecurityError</code> แปลว่า Browser ไม่อนุญาตให้ GitHub Pages อ่าน DOM ใน iframe ต่าง Origin ดังนั้นวิธี iframe ไม่สามารถ Collect อัตโนมัติได้ แม้หน้าภายในจะแสดงภาพได้</p></section>
+</main>
+<script>
+"use strict";
+const SITE="control.egat.co.th/gpddwebsite/MonthlyRequirementNonCoPage.aspx";
+const frame=document.getElementById("egat"),state=document.getElementById("status"),readState=document.getElementById("readState");
+let protocol="";
+function show(s){state.textContent=s}
+function load(scheme){
+ protocol=scheme;readState.textContent="ยังไม่ได้ตรวจอ่านข้อมูล";
+ show("กำลังพยายามเปิด "+scheme+"://"+SITE+" …");
+ frame.src=scheme+"://"+SITE;
+ setTimeout(()=>{if(protocol===scheme)show(state.textContent+"\nหากพื้นที่ยังว่าง ให้ตรวจ Console (เหตุการณ์ iframe load ไม่รับรองว่าเนื้อหาปรากฏ)")},5000);
+}
+document.getElementById("loadHttp").onclick=()=>load("http");
+document.getElementById("loadHttps").onclick=()=>load("https");
+frame.addEventListener("load",()=>{show("Browser ส่ง iframe load event สำหรับ "+frame.src+" แล้ว — ยังไม่ยืนยันว่า EGAT แสดงสำเร็จหรือ Browser บล็อก เนื่องจากเหตุการณ์นี้อาจเกิดกับหน้า error ได้")});
+frame.addEventListener("error",()=>show("iframe เกิด error ขณะโหลด กรุณาเปิด Console เพื่อตรวจรายละเอียด"));
+document.getElementById("inspect").onclick=()=>{
+ try{
+  const doc=frame.contentDocument;
+  if(!doc)throw new Error("Browser ไม่ยอมเปิดเผย contentDocument (ต่าง Origin หรือถูกบล็อก)");
+  const table=doc.querySelector("#ContentPlaceHolder1_tblReq");
+  readState.textContent=table?"อ่านตารางได้จริง "+table.rows.length+" แถว":"อ่าน DOM ได้ แต่ไม่พบตาราง EGAT";
+ }catch(e){
+  readState.textContent="ไม่สามารถอ่านตารางข้าม Origin: "+e.name+": "+e.message+"\nไม่สามารถใช้ iframe เป็น Collector โดยตรงได้";
+ }
+};
+</script></body></html>
