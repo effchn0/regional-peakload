@@ -32,6 +32,11 @@ function adjust(file,body){
   const old="const r=await fetch(`/api/egat/monthly?year=${year}&month=${month}`,{signal:AbortSignal.any([controller.signal,AbortSignal.timeout(35000)])});";
   if(!s.includes(old))throw Error("Unexpected monthly.js fetch");
   s=helper+s.replace(old,"const r=await fetchMonthly(year,month,{signal:AbortSignal.any([controller.signal,AbortSignal.timeout(35000)])});");
+  s=s.replace("state.transport==='internal-snapshot'?'● ข้อมูลจริงจาก Collector ภายใน EGAT • สำเนาที่เก็บไว้ ไม่ใช่ Live'",
+    "state.transport==='egat-internal-gateway'?(state.cacheHit?'● EGAT Gateway • Cache ที่เก็บไว้':'● Collect จาก EGAT Gateway สำเร็จ • '+state.rows.length+' วัน'):state.transport==='published-snapshot'?'● ข้อมูลที่เผยแพร่ไว้ • ไม่ใช่ Live':state.transport==='internal-snapshot'?'● ข้อมูลจริงจาก Collector ภายใน EGAT • สำเนาที่เก็บไว้ ไม่ใช่ Live'");
+  s=s.replace("$('warning').textContent='ยังไม่มีข้อมูลสำหรับเดือนที่เลือก สามารถรับ JSON จาก Collector ภายใน EGAT หรือเลือกโหมดข้อมูลทดสอบได้';",
+    "$('warning').textContent='ไม่สามารถโหลดข้อมูลจริง: ตรวจสอบ HTTPS Gateway หรือ CORS ของ API เดิม • ไม่มีการใช้ Mock อัตโนมัติ';");
+
  }
  if(file==="monthly.html"){
   const gatewayUi='<div class="box" style="padding:10px 15px;margin-bottom:12px"><div class="section" style="gap:8px;flex-wrap:wrap"><label for="egatGatewayUrl" style="font-size:12px">EGAT Collector Gateway (HTTPS ภายใน)</label><input id="egatGatewayUrl" type="url" style="flex:1;min-width:220px" placeholder="https://collector.example.egat"><button type="button" id="egatGatewaySave" class="btn">บันทึก</button></div><div class="muted" id="egatGatewayState">เครื่องใน EGAT ใช้ Gateway กลางที่ได้รับอนุญาต • หากไม่มีจะใช้ Snapshot ที่เผยแพร่แล้ว ไม่ใช่ Live</div></div>';
