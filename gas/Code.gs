@@ -115,3 +115,10 @@ function collectMonthly(year,month){
   unit:'MW',unitBasis:'project-configuration',collectedAt:new Date().toISOString(),
   isMock:false,transport:'google-apps-script',connectionStatus:'collected',rows};
 }
+
+/** Run this from Apps Script editor to see actual EGAT connectivity result. */
+function testProbeSource() {
+ const result = probeSource();
+ console.log(JSON.stringify(result, null, 2));
+ return result;
+}
